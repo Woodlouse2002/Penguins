@@ -1,0 +1,99 @@
+---
+title: "Data Vis and Reproducibility"
+date: '2022-12-03'
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Precursors & Data Preparation
+Loading required packages:
+```{r, message=FALSE, warning=FALSE}
+source("functions/libraries.r")
+```
+Unaltered copy of data set put aside in folder:
+```{r}
+write.csv(penguins_raw, "data_raw/penguins_raw.csv")
+penguins_raw <- read.csv("data_raw/penguins_raw.csv")
+knitr::kable(head(penguins_raw))
+```
+The data need cleaning for ease of use in R. Clean data deposited within its own folder.  
+```{r}
+source("functions/cleaning.r")
+penguins_clean <- cleaning(penguins_raw)
+write.csv(penguins_clean, "data_clean/penguins_clean.csv")
+knitr::kable(head(penguins_clean))
+```
+
+## Analysis of covariance test
+In Adelie Penguins, does the relationship between body mass (covariate) and culmen depth (response variable) differ between sexes?
+
+**Hypotheses** (null): 
+- Main effect of sex: mean values of sexes are not significantly different from each other
+- Body mass: slope of body mass against culmen depth not different from 0
+- Interaction: effect of sex not dependent on body mass for culmen depth (and effect of body mass not dependent on sex)
+
+**Preparing the data** (Adelie only, and NA values for Sex removed):
+```{r}
+source("functions/cleaning.r")
+Adelie <- Adelie_Clean(penguins_clean)
+write.csv(Adelie, "data_ANCOVA/Adelie.csv")
+```
+**Fitting a linear model** (including interaction between sex and body mass):
+```{r}
+AdelieMod <- lm(culmen_depth_mm ~ sex * body_mass_g, Adelie)
+```
+**Assumptions**: 
+
+* random sampling (assumed to be met in Palmer Penguins dataset)
+* approximate normality of residuals for each independent variable category
+* equal variance of response variable for each explanatory variable combination.
+```{r}
+plot(AdelieMod, which = 2)
+```
+
+Whilst there is deviation from the line representing normal distribution of data (particularly in the right of the plot), the histogram below demonstrates the data are sufficiently normal for ANCOVA, which is relatively robust to violations of normality assumptions. 
+```{r}
+ggplot(Adelie, aes(y = culmen_depth_mm, fill = sex)) + geom_histogram(alpha=0.5, bins=22) + coord_flip() + labs(x= "Count", y = "Culmen depth (mm)") + scale_fill_discrete(name="Sex", labels=c('Female', 'Male'), h = c(245, 45))
+```
+```{r}
+plot(AdelieMod, which = 1)
+```
+
+There are very few extreme outliers, and although there is a small deviation from the line representing equality of variance on the right hand side, there is no significant difference in variance between the male and female levels of the sex factor:
+```{r}
+x <- subset(Adelie, sex=="MALE")
+y <- subset(Adelie, sex=="FEMALE")
+var.test(x$culmen_depth_mm, y$culmen_depth_mm, alternative = "two.sided")
+```
+```{r}
+summary(AdelieMod)
+```
+
+**Figure**:
+```{r, message=FALSE, results=FALSE}
+source("functions/plot.r")
+PenguinANCOVA <- plot_penguin(Adelie)
+PenguinANCOVA
+```
+
+Saving figures:
+```{r, message=FALSE, results=FALSE}
+source("functions/plot.r")
+save_ANCOVA_png(Adelie, "figures/Fig1.png", 
+                      width=20, height=15, res=600, scaling=1)
+
+save_ANCOVA_png(Adelie, "figures/Fig2_powerpoint.png", 
+                      width=20, height=15, res=600, scaling=1.8)
+
+save_ANCOVA_svg(Adelie, "figures/Fig1.svg", width=20, height=15, scaling=2.54)
+
+save_ANCOVA_svg(Adelie, "figures/Fig2_powerpointposter.svg", width=20, height=15, scaling=4.57)
+```
+
+**Interpretation**
+
+The i) y intercept for the regression line for the female level in the sex factor, ii) difference in y intercepts between male and female level regression lines and iii) slope of the female level regression line, are all significantly different to 0 at the 0.05 level or below. The difference in slope between the two lines (i.e. interaction) is not significantly different to 0 at the 0.05 level but is at 0.1. 
+Given the non-significance at this level of the interaction term, it could be argued that a (simpler) model without an interaction term would be more suitable. 
+The faint signal of interaction means the main effects should be interpreted with caution, but in biological terms (according to the figure and summary table), sex affects culmen depth (males have larger culmen depths) and increased body mass is related to increased culmen depth but there is not an interaction effect between body mass and sex).
