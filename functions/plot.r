@@ -1,3 +1,4 @@
+#function for figure graphically representing ANCOVA test
 plot_penguin <- function(Adelie){
     ggplot(Adelie, aes(x = body_mass_g, y = culmen_depth_mm, colour = sex)) +
   geom_point() +
@@ -9,6 +10,7 @@ plot_penguin <- function(Adelie){
   scale_color_manual(labels=c("Female", "Male"), values=c("#003d80", "#e27602"))
 }
 
+#function to save figure as png file
 save_ANCOVA_png <- function(Adelie, 
                                   filename, width, height, res, scaling){
   agg_png(filename, width   =  width, 
@@ -21,6 +23,7 @@ save_ANCOVA_png <- function(Adelie,
   dev.off()
 }
 
+#function to save figure as svg file
 save_ANCOVA_svg <- function(Adelie, 
                             filename, width, height, scaling){
   svglite(filename, 
